@@ -1,0 +1,25 @@
+[package]
+name = "grepath"
+version = "0.1.0"
+edition = "2021"
+authors = ["kqito"]
+description = "Extract paths effortlessly from your command outputs with grepath"
+repository = "https://github.com/kqito/grepath"
+license = "MIT"
+readme = "README.md"
+categories = ["command-line-utilities", "text-processing", "parsing", "utilities"]
+keywords = ["path", "command-line", "grep", "regex", "extract", "files", "cli"]
+
+[badges]
+github = { repository = "kqito/tiny-typescript-transpiler", workflow = "Rust" }
+
+[dependencies]
+anyhow = { version = "1.0.82" }
+regex = "1.10.4"
+thiserror = "1.0.61"
+argh = "0.1.10"
+atty = "0.2.14"
+
+[dev-dependencies]
+pretty_assertions = "1.4.0"
+

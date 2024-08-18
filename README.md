@@ -10,34 +10,60 @@
 
 ## Installation
 
-TODO
+### Install prebuilt binaries via Homebrew
+
+```sh
+brew install kqito/tap/grepath
+```
+
+### Install prebuilt binaries via shell script
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/kqito/grepath/releases/latest/download/grepath-installer.sh | sh
+```
+
+Or download directly from [releases](https://github.com/kqito/grepath/releases).
 
 ## Usage
+When we run `grepath <file>`, it reads the file and outputs the paths from the text.
 
+For example, if you want to open error files in VSCode, you can use the following command:
+
+```sh
+grepath error.log | xargs -o code
+```
+
+
+### Pipe from a command
 You can use `grepath` in command-line pipelines to filter paths from the output of other commands. Here is an example usage:
 
 ```sh
-bun tsc --noEmit | grepath | xargs -o nvim -p
+cat error.log | grepath | xargs -o code
 ```
 
 ### Command Line Options
 
-- **file**: Optionally specify a file to read from instead of stdin.
-- **-d, --debug**: Print debug information.
-- **-l, --lines**: Extract paths with line numbers.
-- **-u, --unique**: Remove duplicate paths.
-
-## Example
-
-Given a TypeScript compiler error output, you can extract file paths for further processing:
-
 ```sh
-❯ bun tsc --noEmit | grepath
+grepath --help
+Usage: grepath [<file>] [-d] [-l] [-u]
 
-src/domains/commu/components/TestCard.tsx
-src/domains/commu/components/TestCardContainer.tsx
-src/domains/commu/components/TestListCard.tsx
+Args
+
+Positional Arguments:
+  file              file
+
+Options:
+  -d, --debug       help
+  -l, --lines       lines Extract only the file paths without line numbers e.g.
+                    src/main.rs
+  -u, --unique      unique Omit duplicate paths
+  --help            display usage information
 ```
+
+## TODO
+- [ ] Support for windows paths
+- [ ] Support for custom regex patterns
+
 
 ## Contributing
 

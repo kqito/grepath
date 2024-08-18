@@ -43,8 +43,8 @@ impl GrepParamsBuilder {
         self
     }
 
-    pub fn content(mut self, content: String) -> Self {
-        self.content = Some(content);
+    pub fn content(mut self, content: Option<String>) -> Self {
+        self.content = content;
         self
     }
 
@@ -86,7 +86,7 @@ mod params {
         let params = GrepParamsBuilder::new()
             .lines(Some(true))
             .unique(Some(false))
-            .content("hello world".to_string())
+            .content(Some("hello world".to_string()))
             .build()
             .unwrap();
 
@@ -99,7 +99,7 @@ mod params {
     fn build_params_without_lines() {
         let params = GrepParamsBuilder::new()
             .unique(Some(false))
-            .content("hello world".to_string())
+            .content(Some("hello world".to_string()))
             .build()
             .unwrap();
 
@@ -112,7 +112,7 @@ mod params {
     fn build_params_without_unique() {
         let params = GrepParamsBuilder::new()
             .lines(Some(true))
-            .content("hello world".to_string())
+            .content(Some("hello world".to_string()))
             .build()
             .unwrap();
 

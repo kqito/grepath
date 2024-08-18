@@ -21,10 +21,16 @@ fn main() {
         }
     }
 
+    let content = if pipeline_input == "" {
+        None
+    } else {
+        Some(pipeline_input)
+    };
+
     let mut params_builder = GrepParamsBuilder::new()
         .lines(args.lines)
         .unique(args.unique)
-        .content(pipeline_input);
+        .content(content);
 
     if let Some(f) = args.file {
         match params_builder.read_file_content(&f) {
@@ -39,7 +45,11 @@ fn main() {
     let params = match params_builder.build() {
         Ok(params) => params,
         Err(e) => {
-            pretty_print(&e.to_string(), Status::Error);
+            let message = format!(
+                "{}\nTo show details, please run `grepath --help`",
+                &e.to_string()
+            );
+            pretty_print(&message, Status::Error);
             return;
         }
     };

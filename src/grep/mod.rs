@@ -75,7 +75,7 @@ error: "tsc" exited with code 2
     #[test]
     fn extract_path_test() {
         let params = GrepParamsBuilder::new()
-            .content("hello world /home/username /etc/passwd".to_string())
+            .content(Some("hello world /home/username /etc/passwd".to_string()))
             .build()
             .unwrap();
 
@@ -85,7 +85,7 @@ error: "tsc" exited with code 2
     #[test]
     fn extract_path_from_tsc_error_message() {
         let params = GrepParamsBuilder::new()
-            .content(TSC_ERROR_MESSAGE.to_string())
+            .content(Some(TSC_ERROR_MESSAGE.to_string()))
             .build()
             .unwrap();
 
@@ -102,7 +102,7 @@ error: "tsc" exited with code 2
     #[test]
     fn extract_path_from_error_message() {
         let params = GrepParamsBuilder::new()
-            .content(r#"error: "tsc" exited with code 2"#.to_string())
+            .content(Some(r#"error: "tsc" exited with code 2"#.to_string()))
             .build()
             .unwrap();
 
@@ -112,7 +112,7 @@ error: "tsc" exited with code 2
     #[test]
     fn extract_path_without_lines_from_tsc_error_message() {
         let params = GrepParamsBuilder::new()
-            .content(TSC_ERROR_MESSAGE.to_string())
+            .content(Some(TSC_ERROR_MESSAGE.to_string()))
             .lines(Some(true))
             .build()
             .unwrap();

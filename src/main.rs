@@ -28,7 +28,6 @@ fn main() {
     };
 
     let mut params_builder = GrepParamsBuilder::new()
-        .lines(args.lines)
         .unique(args.unique)
         .content(content);
 
@@ -60,9 +59,9 @@ fn main() {
         }
     }
 
-    let paths = grep(params);
+    let items = grep(&params);
 
-    for path in paths {
-        println!("{}", &path);
+    for item in items {
+        println!("{}", &item.path);
     }
 }

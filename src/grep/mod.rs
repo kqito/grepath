@@ -1,132 +1,68 @@
 pub mod params;
+mod tests;
 
 use params::GrepParams;
 use regex::Regex;
 
-/// Extract path in string message with regex
-pub fn grep(params: GrepParams) -> Vec<String> {
-    // Define the regex pattern to match file paths
-    let re = Regex::new(r"(\S+/[\w\-/\.]+(?:\:\d+(?:\:\d+)?)?)").unwrap();
-    // Create an empty vector to hold the matches
-    let mut paths = Vec::new();
-
-    // Iterate over all matches in the message
-    for cap in re.captures_iter(&params.content) {
-        // Push the matched path to the vector
-        paths.push(cap[1].to_string());
-    }
-
-    if !params.lines {
-        paths = paths
-            .iter()
-            .map(|path| {
-                let parts: Vec<&str> = path.split(':').collect();
-                parts[0].to_string()
-            })
-            .collect::<Vec<String>>();
-    }
-
-    paths.sort();
-    if params.unique {
-        paths.dedup();
-    }
-
-    paths
+#[derive(Debug, PartialEq)]
+pub enum GrepItemType {
+    RelativePath,
+    AbsolutePath,
 }
 
-#[cfg(test)]
-mod tests {
-    use params::GrepParamsBuilder;
-    use pretty_assertions::assert_eq;
+#[derive(Debug, PartialEq)]
+pub struct GrepItem {
+    pub path: String,
+    pub line: Option<usize>,
+    pub column: Option<usize>,
+    pub item_type: GrepItemType,
+}
 
-    use super::*;
+/// Extract path in string message with regex
+pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
+    let mut items: Vec<GrepItem> = Vec::new();
+    let regex = Regex::new(r"\b[\w./-]+?\.\w+\b").unwrap();
 
-    const TSC_ERROR_MESSAGE: &str = r#"
-❯ bun tsc --noEmit
-src/domains/commu/components/TestCard.tsx:134:11 - error TS2322: Type 'boolean' is not assignable to type 'number'.
+    // Iterate over all matches in the message
+    for cap in regex.captures_iter(&params.content) {
+        let path = cap[0].to_string();
+        let parts: Vec<&str> = path.split(':').collect();
+        let line: Option<usize> = match parts.get(1) {
+            Some(line) => match line.parse::<usize>() {
+                Ok(line) => Some(line),
+                Err(_) => None,
+            },
+            None => None,
+        };
+        let column: Option<usize> = match parts.get(2) {
+            Some(column) => match column.parse::<usize>() {
+                Ok(column) => Some(column),
+                Err(_) => None,
+            },
+            None => None,
+        };
+        let item_type = match path.starts_with('/') {
+            true => GrepItemType::AbsolutePath,
+            false => GrepItemType::RelativePath,
+        };
 
-134           isRemovable={isRemovable}
-              ~~~~~~~~~~~
-
-  src/domains/commu/components/TestCard.tsx:22:3
-    22   isRemovable: number;
-         ~~~~~~~~~~~
-    The expected type comes from property 'isRemovable' which is declared here on type 'IntrinsicAttributes & Readonly<{ displayName: string; profileImageUrl: string; badgeImageUrl: string | undefined; authorType: IrvineV1FeedEntryAuthorType; ... 7 more ...; onOpenReportDialog: () => void; }>'
-
-src/domains/commu/components/TestCard.tsx:93:9 - error TS2322: Type 'number' is not assignable to type 'boolean'.
-
-93         isRemovable={isRemovable}
-           ~~~~~~~~~~~
-
-  src/domains/commu/components/TestCardContainer.tsx:16:3
-    16   isRemovable: boolean;
-         ~~~~~~~~~~~
-    The expected type comes from property 'isRemovable' which is declared here on type 'IntrinsicAttributes & Props'
-
-
-Found 2 errors in 2 files.
-
-Errors  Files
-     1  src/domains/commu/components/TestListCard.tsx:134
-     1  src/domains/commu/components/TestListCard.tsx:93
-error: "tsc" exited with code 2
-            "#;
-
-    #[test]
-    fn extract_path_test() {
-        let params = GrepParamsBuilder::new()
-            .content(Some("hello world /home/username /etc/passwd".to_string()))
-            .build()
-            .unwrap();
-
-        assert_eq!(grep(params), ["/etc/passwd", "/home/username"]);
+        items.push(GrepItem {
+            path,
+            line,
+            column,
+            item_type,
+        });
     }
 
-    #[test]
-    fn extract_path_from_tsc_error_message() {
-        let params = GrepParamsBuilder::new()
-            .content(Some(TSC_ERROR_MESSAGE.to_string()))
-            .build()
-            .unwrap();
-
-        assert_eq!(
-            grep(params),
-            [
-                "src/domains/commu/components/TestCard.tsx",
-                "src/domains/commu/components/TestCardContainer.tsx",
-                "src/domains/commu/components/TestListCard.tsx",
-            ]
-        );
+    // debup by item.path
+    items.sort_by(|a, b| {
+        a.path
+            .partial_cmp(&b.path)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    if params.unique {
+        items.dedup_by(|a, b| a.path == b.path);
     }
 
-    #[test]
-    fn extract_path_from_error_message() {
-        let params = GrepParamsBuilder::new()
-            .content(Some(r#"error: "tsc" exited with code 2"#.to_string()))
-            .build()
-            .unwrap();
-
-        assert_eq!(grep(params), Vec::<String>::new());
-    }
-
-    #[test]
-    fn extract_path_without_lines_from_tsc_error_message() {
-        let params = GrepParamsBuilder::new()
-            .content(Some(TSC_ERROR_MESSAGE.to_string()))
-            .lines(Some(true))
-            .build()
-            .unwrap();
-
-        assert_eq!(
-            grep(params),
-            [
-                "src/domains/commu/components/TestCard.tsx:134:11",
-                "src/domains/commu/components/TestCard.tsx:22:3",
-                "src/domains/commu/components/TestCard.tsx:93:9",
-                "src/domains/commu/components/TestCardContainer.tsx:16:3",
-                "src/domains/commu/components/TestListCard.tsx:134",
-                "src/domains/commu/components/TestListCard.tsx:93",
-            ]
-        );
-    }
+    items
 }

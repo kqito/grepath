@@ -54,8 +54,6 @@ Positional Arguments:
 
 Options:
   -d, --debug       help
-  -l, --lines       lines Extract only the file paths without line numbers e.g.
-                    src/main.rs
   -u, --unique      unique Omit duplicate paths
   --help            display usage information
 ```

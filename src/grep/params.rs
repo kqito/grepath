@@ -69,8 +69,8 @@ impl GrepParamsBuilder {
 
 #[cfg(test)]
 mod params {
-    use pretty_assertions::assert_eq;
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn default_params() {

@@ -3,7 +3,7 @@ pub enum Status {
     Error,
     Warning,
     Success,
-    Info
+    Info,
 }
 
 // signle print function that passable status 'error' or 'warning' or nothing

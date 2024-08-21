@@ -15,4 +15,9 @@ pub struct Args {
     /// unique
     /// Omit duplicate paths
     pub unique: Option<bool>,
+
+    #[argh(switch)]
+    /// no-validate
+    /// Skip validation of the file
+    pub no_validate: Option<bool>,
 }

@@ -28,6 +28,7 @@ fn main() {
     };
 
     let mut params_builder = GrepParamsBuilder::new()
+        .no_validate(args.no_validate)
         .unique(args.unique)
         .content(content);
 

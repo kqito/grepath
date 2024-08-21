@@ -3,6 +3,7 @@ use anyhow::{anyhow, Error};
 #[derive(Debug)]
 pub struct GrepParams {
     pub unique: bool,
+    pub validate: bool,
     pub content: String,
 }
 
@@ -10,6 +11,7 @@ impl Default for GrepParams {
     fn default() -> Self {
         Self {
             unique: true,
+            validate: true,
             content: "".to_string(),
         }
     }
@@ -18,6 +20,7 @@ impl Default for GrepParams {
 #[derive(Default, Debug)]
 pub struct GrepParamsBuilder {
     unique: Option<bool>,
+    no_validate: Option<bool>,
     content: Option<String>,
 }
 
@@ -25,6 +28,7 @@ impl GrepParamsBuilder {
     pub fn new() -> Self {
         Self {
             unique: None,
+            no_validate: None,
             content: None,
         }
     }
@@ -39,6 +43,11 @@ impl GrepParamsBuilder {
         self
     }
 
+    pub fn no_validate(mut self, no_validate: Option<bool>) -> Self {
+        self.no_validate = no_validate;
+        self
+    }
+
     pub fn read_file_content(mut self, file: &str) -> Result<Self, Error> {
         let content = std::fs::read_to_string(file)?;
         self.content = Some(content);
@@ -50,6 +59,7 @@ impl GrepParamsBuilder {
         match self.content {
             Some(content) => Ok(GrepParams {
                 unique: self.unique.unwrap_or(true),
+                validate: !self.no_validate.unwrap_or(false),
                 content,
             }),
             None => Err(anyhow!("content is required")),
@@ -95,9 +105,7 @@ mod params {
 
     #[test]
     fn build_params_without_content() {
-        let params = GrepParamsBuilder::new()
-            .unique(Some(false))
-            .build();
+        let params = GrepParamsBuilder::new().unique(Some(false)).build();
 
         assert!(params.is_err());
     }

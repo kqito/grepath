@@ -22,6 +22,7 @@ mod tests {
             .content(Some(
                 "hello world /home/username.txt /etc/passwd.txt".to_string(),
             ))
+            .no_validate(Some(true))
             .build()
             .unwrap();
 
@@ -32,6 +33,7 @@ mod tests {
     fn no_match_text() {
         let params = GrepParamsBuilder::new()
             .content(Some("hello world /home/username /etc/passwd".to_string()))
+            .no_validate(Some(true))
             .build()
             .unwrap();
 
@@ -42,6 +44,20 @@ mod tests {
     fn extract_path_from_error_message() {
         let params = GrepParamsBuilder::new()
             .content(Some(r#"error: "tsc" exited with code 2"#.to_string()))
+            .no_validate(Some(true))
+            .build()
+            .unwrap();
+
+        assert_paths(grep(&params), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn extract_path_with_validate() {
+        let params = GrepParamsBuilder::new()
+            .content(Some(
+                "hello world /home/username.txt /etc/passwd.txt".to_string(),
+            ))
+            .no_validate(Some(false))
             .build()
             .unwrap();
 

@@ -37,6 +37,7 @@ error: "tsc" exited with code 2
     fn tsc_error_message() {
         let params = GrepParamsBuilder::new()
             .content(Some(TSC_ERROR_MESSAGE.to_string()))
+            .no_validate(Some(true))
             .build()
             .unwrap();
 

@@ -42,6 +42,7 @@ mod tests {
     fn eslint_error_message() {
         let params = GrepParamsBuilder::new()
             .content(Some(ESLINT_ERROR_MESSAGE.to_string()))
+            .no_validate(Some(true))
             .build()
             .unwrap();
 

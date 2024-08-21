@@ -1,6 +1,8 @@
 pub mod params;
 mod tests;
 
+use std::path::Path;
+
 use params::GrepParams;
 use regex::Regex;
 
@@ -34,6 +36,7 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
             },
             None => None,
         };
+
         let column: Option<usize> = match parts.get(2) {
             Some(column) => match column.parse::<usize>() {
                 Ok(column) => Some(column),
@@ -41,10 +44,17 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
             },
             None => None,
         };
+
         let item_type = match path.starts_with('/') {
             true => GrepItemType::AbsolutePath,
             false => GrepItemType::RelativePath,
         };
+
+        if params.validate {
+            if !Path::new(&path).exists() {
+                continue;
+            }
+        }
 
         items.push(GrepItem {
             path,

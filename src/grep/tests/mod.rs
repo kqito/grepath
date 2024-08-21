@@ -26,7 +26,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_paths(grep(&params), vec!["etc/passwd.txt", "home/username.txt"]);
+        assert_paths(grep(&params), vec!["/etc/passwd.txt", "/home/username.txt"]);
     }
 
     #[test]

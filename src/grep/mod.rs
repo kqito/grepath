@@ -23,7 +23,7 @@ pub struct GrepItem {
 /// Extract path in string message with regex
 pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
     let mut items: Vec<GrepItem> = Vec::new();
-    let regex = Regex::new(r"\b[\w./-]+?\.\w+\b").unwrap();
+    let regex = Regex::new(r"([a-zA-Z0-9_\-./]+(\.[a-zA-Z0-9_\-]+)+)").unwrap();
 
     // Iterate over all matches in the message
     for cap in regex.captures_iter(&params.content) {

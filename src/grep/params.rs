@@ -62,7 +62,7 @@ impl GrepParamsBuilder {
                 validate: !self.no_validate.unwrap_or(false),
                 content,
             }),
-            None => Err(anyhow!("content is required")),
+            None => Err(anyhow!("Missing content to search for")),
         }
     }
 }

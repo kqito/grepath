@@ -7,7 +7,7 @@ use std::io::{self, Read};
 use args::Args;
 use grep::grep;
 use grep::params::GrepParamsBuilder;
-use output::{pretty_print, Status};
+use output::{pretty_print, pretty_println, Status};
 
 fn main() {
     let args: Args = argh::from_env();
@@ -45,11 +45,15 @@ fn main() {
     let params = match params_builder.build() {
         Ok(params) => params,
         Err(e) => {
-            let message = format!(
-                "{}\nTo show details, please run `grepath --help`",
-                &e.to_string()
-            );
-            pretty_print(&message, Status::Error);
+            pretty_println(&e.to_string(), Status::Error);
+
+            eprintln!("Usage:");
+            eprintln!("  $grepath <file>");
+            eprintln!("\nExample:");
+            eprintln!("  $grepath sample.txt");
+            eprintln!("  $cat sample.txt | grepath");
+            eprintln!("\nFor more details, please run:");
+            eprintln!("  $grepath --help");
             return;
         }
     };

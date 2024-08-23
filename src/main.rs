@@ -7,17 +7,18 @@ use std::io::{self, Read};
 use args::Args;
 use grep::grep;
 use grep::params::GrepParamsBuilder;
-use output::{pretty_print, pretty_println, Status};
+use output::{pretty_print, pretty_println, print_help, Status};
 
 fn main() {
     let args: Args = argh::from_env();
 
     let mut pipeline_input = String::new();
-    // Read from stdin if it's not a tty
-    if atty::isnt(atty::Stream::Stdin) {
+    let is_piped = atty::isnt(atty::Stream::Stdin);
+
+    if is_piped {
         if io::stdin().read_to_string(&mut pipeline_input).is_err() {
             pretty_print("Failed to read from stdin", Status::Error);
-            return;
+            std::process::exit(1);
         }
     }
 
@@ -37,7 +38,7 @@ fn main() {
             Ok(builder) => params_builder = builder,
             Err(e) => {
                 pretty_print(&e.to_string(), Status::Error);
-                return;
+                std::process::exit(1);
             }
         }
     }
@@ -45,16 +46,14 @@ fn main() {
     let params = match params_builder.build() {
         Ok(params) => params,
         Err(e) => {
-            pretty_println(&e.to_string(), Status::Error);
+            // If the program is piped, we don't want to print the error message
+            if is_piped {
+                std::process::exit(0);
+            }
 
-            eprintln!("Usage:");
-            eprintln!("  $grepath <file>");
-            eprintln!("\nExample:");
-            eprintln!("  $grepath sample.txt");
-            eprintln!("  $cat sample.txt | grepath");
-            eprintln!("\nFor more details, please run:");
-            eprintln!("  $grepath --help");
-            return;
+            pretty_println(&e.to_string(), Status::Error);
+            print_help();
+            std::process::exit(1);
         }
     };
 

@@ -1,6 +1,6 @@
 [package]
 name = "grepath"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 authors = ["kqito"]
 description = "Extract paths effortlessly from your command outputs with grepath"

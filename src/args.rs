@@ -1,3 +1,6 @@
+use std::io::{self, Read};
+
+use anyhow::Result;
 use argh::FromArgs;
 
 #[derive(FromArgs, PartialEq, Debug)]
@@ -20,4 +23,23 @@ pub struct Args {
     /// no-validate
     /// Skip validation of the file
     pub no_validate: Option<bool>,
+}
+
+pub fn get_input() -> Result<Option<String>> {
+    let mut pipeline_input = String::new();
+    let is_piped = atty::isnt(atty::Stream::Stdin);
+
+    if is_piped {
+        if io::stdin().read_to_string(&mut pipeline_input).is_err() {
+            return Err(anyhow::anyhow!("Failed to read from stdin"));
+        }
+    }
+
+    let content = if pipeline_input == "" {
+        Ok(None)
+    } else {
+        Ok(Some(pipeline_input))
+    };
+
+    content
 }

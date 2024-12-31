@@ -23,6 +23,18 @@ pub struct Args {
     /// no-validate
     /// Skip validation of the file
     pub no_validate: Option<bool>,
+
+    #[argh(option, short = 'c')]
+    /// current_dir
+    /// Set the current directory
+    /// Default: "."
+    /// Example: /path/to/dir
+    pub current_dir: Option<String>,
+
+    #[argh(option, short = 'i')]
+    /// ignore
+    /// Ignore pattern
+    pub ignore: Vec<String>,
 }
 
 pub fn get_input() -> Result<Option<String>> {

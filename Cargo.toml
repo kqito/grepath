@@ -20,6 +20,7 @@ regex = "1.10.4"
 thiserror = "1.0.61"
 argh = "0.1.10"
 atty = "0.2.14"
+walkdir = "2"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

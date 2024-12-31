@@ -19,9 +19,12 @@ fn main() {
     };
 
     let mut params_builder = GrepParamsBuilder::new()
+        .debug(args.debug)
         .no_validate(args.no_validate)
         .unique(args.unique)
-        .content(input);
+        .content(input)
+        .current_dir(args.current_dir)
+        .ignore(args.ignore);
 
     if let Some(f) = args.file {
         match params_builder.read_file_content(&f) {
@@ -48,13 +51,15 @@ fn main() {
         }
     };
 
-    if let Some(debug) = args.debug {
-        if debug {
-            pretty_print(&format!("Grep params: {:#?}", &params), Status::Info);
-        }
+    if params.debug {
+        pretty_print(&format!("Grep params: {:#?}", &params), Status::Info);
     }
 
     let items = grep(&params);
+
+    if params.debug {
+        pretty_print(&format!("Grep items: {:#?}", &items), Status::Info);
+    }
 
     for item in items {
         println!("{}", &item.path);

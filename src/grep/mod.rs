@@ -2,9 +2,13 @@ mod finder;
 pub mod params;
 mod tests;
 
-use params::GrepParams;
-
 use crate::output::{pretty_print, Status};
+use params::{Filetype, GrepParams};
+use rayon::prelude::*;
+use std::{
+    fmt::Debug,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Debug, PartialEq)]
 pub enum GrepItemType {
@@ -18,68 +22,77 @@ pub struct GrepItem {
     pub line: Option<usize>,
     pub column: Option<usize>,
     pub item_type: GrepItemType,
+    pub filetype: Filetype,
 }
 
 /// Extract path in string message with regex
 pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
-    let mut items: Vec<GrepItem> = Vec::new();
-    let mut finder = params.finder.clone();
-    finder.current_dir(&params.current_dir);
-    finder.ignore(params.ignore_pattern.clone());
-    let find_list = finder.find();
+    let finder = Arc::new(RwLock::new(params.finder.clone()));
+    let mut finder_lock = finder.write().unwrap();
+    finder_lock.current_dir(&params.current_dir);
+    finder_lock.ignore(params.ignore_pattern.clone());
+    let find_list = finder_lock.find();
+    drop(finder_lock);
 
     if params.debug {
+        pretty_print(&format!("Content: {:#?}", &params.content), Status::Info);
         pretty_print(&format!("Finder: {:#?}", &find_list), Status::Info);
-        pretty_print(
-            &format!("Finder Regex: {:#?}", &find_list.as_regex()),
-            Status::Info,
-        );
     }
 
-    // Iterate over all matches in the content
-    for cap in find_list.as_regex().captures_iter(&params.content) {
-        let matched = cap[0].to_string();
-        let parts: Vec<&str> = matched.split(':').collect();
+    let items: Vec<_> = find_list
+        .resources
+        .par_iter()
+        .filter_map(|r| {
+            // Improve performance by checking if it matches without using regular expressions
+            if !params.content.contains(&r.path) {
+                return None;
+            }
 
-        let path = parts.get(0).unwrap().to_string();
-        let line: Option<usize> = match parts.get(1) {
-            Some(line) => match line.parse::<usize>() {
+            if params.debug {
+                pretty_print(&format!("Matched: {}", &r.path), Status::Info);
+            }
+
+            let numbers = match r.as_regex().find(&params.content) {
+                Some(numbers) => numbers,
+                None => return None,
+            };
+            let line = match numbers.as_str().parse::<usize>() {
                 Ok(line) => Some(line),
                 Err(_) => None,
-            },
-            None => None,
-        };
-
-        let column: Option<usize> = match parts.get(2) {
-            Some(column) => match column.parse::<usize>() {
+            };
+            let column = match numbers.as_str().parse::<usize>() {
                 Ok(column) => Some(column),
                 Err(_) => None,
-            },
-            None => None,
-        };
+            };
+            let item_type = match &r.path.starts_with('/') {
+                true => GrepItemType::AbsolutePath,
+                false => GrepItemType::RelativePath,
+            };
 
-        let item_type = match path.starts_with('/') {
-            true => GrepItemType::AbsolutePath,
-            false => GrepItemType::RelativePath,
-        };
+            Some(GrepItem {
+                path: r.path.clone(),
+                line,
+                column,
+                item_type,
+                filetype: r.filetype.clone(),
+            })
+        })
+        .collect();
 
-        items.push(GrepItem {
-            path,
-            line,
-            column,
-            item_type,
-        });
-    }
-
+    let mut unique_items: Vec<GrepItem> = items.into_iter().collect();
     // dedup by item.path
-    items.sort_by(|a, b| {
+    unique_items.sort_by(|a, b| {
         a.path
             .partial_cmp(&b.path)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    if params.unique {
-        items.dedup_by(|a, b| a.path == b.path);
-    }
+    unique_items.dedup_by(|a, b| a.path == b.path);
 
-    items
+    // filetypeでのフィルタリング
+    unique_items.retain(|item| match item.filetype {
+        Filetype::File => params.filetype.contains(&Filetype::File),
+        Filetype::Directory => params.filetype.contains(&Filetype::Directory),
+    });
+
+    unique_items
 }

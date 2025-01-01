@@ -14,11 +14,6 @@ pub struct Args {
     /// help
     pub debug: Option<bool>,
 
-    #[argh(switch, short = 'u')]
-    /// unique
-    /// Omit duplicate paths
-    pub unique: Option<bool>,
-
     #[argh(option, short = 'c')]
     /// current_dir
     /// Set the current directory
@@ -30,6 +25,12 @@ pub struct Args {
     /// ignore
     /// Ignore pattern
     pub ignore: Vec<String>,
+
+    #[argh(option, short = 't')]
+    /// filetype
+    /// Filter by type: file (f), directory (d/dir), symlink (l)
+    /// Default: file (f)
+    pub filetype: Vec<String>,
 }
 
 pub fn get_input() -> Result<Option<String>> {

@@ -2,6 +2,8 @@ use regex::Regex;
 use std::fmt::Debug;
 use walkdir::{DirEntry, WalkDir};
 
+use super::params::Filetype;
+
 #[derive(Debug, Clone)]
 pub struct IOFinder {
     pub current_dir: String,
@@ -9,15 +11,9 @@ pub struct IOFinder {
 }
 
 #[derive(Debug, Clone)]
-pub enum ResourceType {
-    Directory,
-    File,
-}
-
-#[derive(Debug, Clone)]
 pub struct Resource {
     pub path: String,
-    pub resource_type: ResourceType,
+    pub filetype: Filetype,
 }
 
 #[derive(Debug, Clone)]
@@ -25,7 +21,7 @@ pub struct Stats {
     pub resources: Vec<Resource>,
 }
 
-pub trait Finder: FinderClone + Debug {
+pub trait Finder: FinderClone + Debug + Sync + Send {
     fn current_dir(&mut self, current_dir: &str);
     fn ignore(&mut self, ignore: Vec<String>);
     fn find(&mut self) -> Stats;
@@ -87,12 +83,20 @@ impl Finder for IOFinder {
 
         for entry in walker.filter_entry(|e| !self.is_ignored(e)) {
             if let Ok(entry) = entry {
+                let path_str = entry.path().to_str().unwrap();
+                // omit "./" prefix
+                let path = if path_str.starts_with("./") {
+                    path_str[2..].to_string()
+                } else {
+                    path_str.to_string()
+                };
+
                 resources.push(Resource {
-                    path: entry.path().to_str().unwrap().to_string(),
-                    resource_type: if entry.file_type().is_dir() {
-                        ResourceType::Directory
+                    path,
+                    filetype: if entry.file_type().is_dir() {
+                        Filetype::Directory
                     } else {
-                        ResourceType::File
+                        Filetype::File
                     },
                 });
             }
@@ -102,23 +106,18 @@ impl Finder for IOFinder {
     }
 }
 
-impl Stats {
+impl Resource {
     pub fn as_regex(&self) -> Regex {
-        let mut matches: Vec<String> = self
-            .resources
-            .iter()
-            .map(|r| {
-                let path = r.path.replace("/", r"\/");
-                match r.resource_type {
-                    ResourceType::Directory => format!(r"{}", path),
-                    // Support for line and column numbers
-                    ResourceType::File => format!(r"{}(:\d+:\d+)?", path),
-                }
-            })
-            .collect();
-        matches.sort_by(|a, b| b.len().cmp(&a.len()));
-
-        let pattern = matches.join("|");
-        Regex::new(&pattern).unwrap()
+        match self.filetype {
+            Filetype::Directory => {
+                let path = self.path.replace("/", r"\/");
+                Regex::new(&format!(r"{}", path)).unwrap()
+            }
+            // Support for line and column numbers
+            Filetype::File => {
+                let path = self.path.replace("/", r"\/");
+                Regex::new(&format!(r"{}(:\d+:\d+)?", path)).unwrap()
+            }
+        }
     }
 }

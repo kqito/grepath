@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::grep::finder::{Finder, Resource, ResourceType, Stats};
+    use crate::grep::finder::{Finder, Resource, Stats};
+    use crate::grep::params::Filetype;
     use crate::grep::GrepItem;
     use crate::grep::{grep, params::GrepParamsBuilder};
     use pretty_assertions::assert_eq;
@@ -49,19 +50,19 @@ mod tests {
         let resources = vec![
             Resource {
                 path: "test_data".to_string(),
-                resource_type: ResourceType::Directory,
+                filetype: Filetype::Directory,
             },
             Resource {
                 path: "test_data/test_file_1.txt".to_string(),
-                resource_type: ResourceType::File,
+                filetype: Filetype::File,
             },
             Resource {
                 path: "test_data/test_file_2.txt".to_string(),
-                resource_type: ResourceType::File,
+                filetype: Filetype::File,
             },
             Resource {
                 path: "test_data/test_file_3.txt".to_string(),
-                resource_type: ResourceType::File,
+                filetype: Filetype::File,
             },
         ];
 
@@ -69,6 +70,7 @@ mod tests {
             "Error occurred in test_data/test_file_1.txt and test_data/test_file_2.txt:1:1";
 
         let params = GrepParamsBuilder::new()
+            .debug(Some(true))
             .content(Some(input_content.to_string()))
             .finder(Box::new(MockFinder::new(resources)))
             .build()
@@ -86,22 +88,27 @@ mod tests {
     fn test_grep_start_with_dot_slash() {
         let resources = vec![
             Resource {
+                path: "test_data".to_string(),
+                filetype: Filetype::Directory,
+            },
+            Resource {
                 path: "./test_data/test_file_1.txt".to_string(),
-                resource_type: ResourceType::File,
+                filetype: Filetype::File,
             },
             Resource {
                 path: "./test_data/test_file_2.txt".to_string(),
-                resource_type: ResourceType::File,
+                filetype: Filetype::File,
             },
             Resource {
                 path: "./test_data/test_file_3.txt".to_string(),
-                resource_type: ResourceType::File,
+                filetype: Filetype::File,
             },
         ];
 
         let input_content = "./test_data/test_file_1.txt sample content to test\n./test_data/test_file_2.txt:1:1: sample content to test";
 
         let params = GrepParamsBuilder::new()
+            .debug(Some(true))
             .content(Some(input_content.to_string()))
             .finder(Box::new(MockFinder::new(resources)))
             .build()
@@ -116,67 +123,38 @@ mod tests {
     }
 
     #[test]
-    fn test_grep_without_unique() {
+    fn test_grep_start_with_dir() {
         let resources = vec![
             Resource {
-                path: "test_data/test_file_1.txt".to_string(),
-                resource_type: ResourceType::File,
+                path: "test_data".to_string(),
+                filetype: Filetype::Directory,
             },
             Resource {
-                path: "test_data/test_file_2.txt".to_string(),
-                resource_type: ResourceType::File,
+                path: "./test_data/test_file_1.txt".to_string(),
+                filetype: Filetype::File,
             },
             Resource {
-                path: "test_data/test_file_3.txt".to_string(),
-                resource_type: ResourceType::File,
+                path: "./test_data/test_file_2.txt".to_string(),
+                filetype: Filetype::File,
+            },
+            Resource {
+                path: "./test_data/test_file_3.txt".to_string(),
+                filetype: Filetype::File,
             },
         ];
 
-        let input_content = "test_data/test_file_2.txt:1:1 test_data/test_file_2.txt:1:1";
+        let input_content = "./test_data/test_file_1.txt sample content to test\n./test_data/test_file_2.txt:1:1: sample content to test";
 
         let params = GrepParamsBuilder::new()
-            .unique(Some(false))
+            .debug(Some(true))
             .content(Some(input_content.to_string()))
             .finder(Box::new(MockFinder::new(resources)))
+            .filetype(vec!["d".to_string()])
             .build()
             .expect("Failed to build GrepParams");
 
         let grep_items = grep(&params);
 
-        assert_paths(
-            grep_items,
-            vec!["test_data/test_file_2.txt", "test_data/test_file_2.txt"],
-        );
-    }
-
-    #[test]
-    fn test_grep_with_unique() {
-        let resources = vec![
-            Resource {
-                path: "test_data/test_file_1.txt".to_string(),
-                resource_type: ResourceType::File,
-            },
-            Resource {
-                path: "test_data/test_file_2.txt".to_string(),
-                resource_type: ResourceType::File,
-            },
-            Resource {
-                path: "test_data/test_file_3.txt".to_string(),
-                resource_type: ResourceType::File,
-            },
-        ];
-
-        let input_content = "test_data/test_file_2.txt:1:1 test_data/test_file_2.txt:1:1";
-
-        let params = GrepParamsBuilder::new()
-            .unique(Some(true))
-            .content(Some(input_content.to_string()))
-            .finder(Box::new(MockFinder::new(resources)))
-            .build()
-            .expect("Failed to build GrepParams");
-
-        let grep_items = grep(&params);
-
-        assert_paths(grep_items, vec!["test_data/test_file_2.txt"]);
+        assert_paths(grep_items, vec!["test_data"]);
     }
 }

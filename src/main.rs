@@ -20,10 +20,10 @@ fn main() {
 
     let mut params_builder = GrepParamsBuilder::new()
         .debug(args.debug)
-        .unique(args.unique)
         .content(input)
         .current_dir(args.current_dir)
-        .ignore(args.ignore);
+        .ignore(args.ignore)
+        .filetype(args.filetype);
 
     if let Some(f) = args.file {
         match params_builder.read_file_content(&f) {

@@ -54,7 +54,6 @@ Positional Arguments:
 
 Options:
   -d, --debug       help
-  -u, --unique      unique Omit duplicate paths
   --help            display usage information
 ```
 

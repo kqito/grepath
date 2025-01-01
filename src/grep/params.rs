@@ -4,7 +4,6 @@ use anyhow::{anyhow, Error};
 pub struct GrepParams {
     pub debug: bool,
     pub unique: bool,
-    pub validate: bool,
     pub content: String,
     pub current_dir: String,
     pub ignore_pattern: Vec<String>,
@@ -27,7 +26,6 @@ impl Default for GrepParams {
 pub struct GrepParamsBuilder {
     debug: Option<bool>,
     unique: Option<bool>,
-    no_validate: Option<bool>,
     content: Option<String>,
     current_dir: Option<String>,
     ignore_pattern: Vec<String>,
@@ -38,7 +36,6 @@ impl GrepParamsBuilder {
         Self {
             debug: None,
             unique: None,
-            no_validate: None,
             content: None,
             current_dir: None,
             ignore_pattern: vec![],
@@ -57,11 +54,6 @@ impl GrepParamsBuilder {
 
     pub fn content(mut self, content: Option<String>) -> Self {
         self.content = content;
-        self
-    }
-
-    pub fn no_validate(mut self, no_validate: Option<bool>) -> Self {
-        self.no_validate = no_validate;
         self
     }
 
@@ -122,7 +114,6 @@ impl GrepParamsBuilder {
             Some(content) => Ok(GrepParams {
                 debug: self.debug.unwrap_or(false),
                 unique: self.unique.unwrap_or(true),
-                validate: !self.no_validate.unwrap_or(false),
                 content,
                 current_dir: self.current_dir.unwrap_or(".".to_string()),
                 ignore_pattern: match self.ignore_pattern.is_empty() {

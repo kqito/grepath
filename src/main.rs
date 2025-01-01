@@ -20,7 +20,6 @@ fn main() {
 
     let mut params_builder = GrepParamsBuilder::new()
         .debug(args.debug)
-        .no_validate(args.no_validate)
         .unique(args.unique)
         .content(input)
         .current_dir(args.current_dir)

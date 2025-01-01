@@ -2,9 +2,6 @@ mod finder;
 pub mod params;
 mod tests;
 
-use std::path::Path;
-
-use finder::Finder;
 use params::GrepParams;
 
 use crate::output::{pretty_print, Status};
@@ -65,12 +62,6 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
             true => GrepItemType::AbsolutePath,
             false => GrepItemType::RelativePath,
         };
-
-        if params.validate {
-            if !Path::new(&path).exists() {
-                continue;
-            }
-        }
 
         items.push(GrepItem {
             path,

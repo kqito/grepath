@@ -19,11 +19,6 @@ pub struct Args {
     /// Omit duplicate paths
     pub unique: Option<bool>,
 
-    #[argh(switch)]
-    /// no-validate
-    /// Skip validation of the file
-    pub no_validate: Option<bool>,
-
     #[argh(option, short = 'c')]
     /// current_dir
     /// Set the current directory

@@ -1,18 +1,44 @@
 use regex::Regex;
-use walkdir::WalkDir;
+use std::fmt::Debug;
+use walkdir::{DirEntry, WalkDir};
 
 #[derive(Debug, Clone)]
-pub struct Finder {
+pub struct IOFinder {
     pub current_dir: String,
     pub ignore_pattern: Vec<String>,
 }
 
 #[derive(Debug)]
-pub struct FindResult {
-    paths: Vec<String>,
+pub struct Location {
+    pub paths: Vec<String>,
 }
 
-impl Finder {
+pub trait Finder: FinderClone + Debug {
+    fn current_dir(&mut self, current_dir: &str);
+    fn ignore(&mut self, ignore: Vec<String>);
+    fn find(&mut self) -> Location;
+}
+
+pub trait FinderClone {
+    fn clone_box(&self) -> Box<dyn Finder>;
+}
+
+impl<T> FinderClone for T
+where
+    T: 'static + Finder + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Finder> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn Finder> {
+    fn clone(&self) -> Box<dyn Finder> {
+        self.clone_box()
+    }
+}
+
+impl IOFinder {
     pub fn new() -> Self {
         Self {
             current_dir: ".".to_string(),
@@ -20,15 +46,30 @@ impl Finder {
         }
     }
 
-    pub fn current_dir(&mut self, current_dir: &str) {
+    fn is_ignored(&self, entry: &DirEntry) -> bool {
+        let path = entry.path();
+        let path_str = path.to_str().unwrap();
+
+        for pattern in &self.ignore_pattern {
+            if path_str.contains(pattern) {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
+impl Finder for IOFinder {
+    fn current_dir(&mut self, current_dir: &str) {
         self.current_dir = current_dir.to_string();
     }
 
-    pub fn ignore(&mut self, ignore: Vec<String>) {
+    fn ignore(&mut self, ignore: Vec<String>) {
         self.ignore_pattern = ignore;
     }
 
-    pub fn find(&mut self) -> FindResult {
+    fn find(&mut self) -> Location {
         let mut paths: Vec<String> = Vec::new();
         let walker = WalkDir::new(&self.current_dir).into_iter();
 
@@ -40,24 +81,11 @@ impl Finder {
             }
         }
 
-        FindResult { paths }
-    }
-
-    fn is_ignored(&mut self, entry: &walkdir::DirEntry) -> bool {
-        let path = entry.path();
-        let path_str = path.to_str().unwrap();
-
-        for pattern in self.ignore_pattern.clone() {
-            if path_str.contains(&pattern) {
-                return true;
-            }
-        }
-
-        false
+        Location { paths }
     }
 }
 
-impl FindResult {
+impl Location {
     pub fn as_regex(&self) -> Regex {
         let matches: Vec<String> = self
             .paths

@@ -23,7 +23,7 @@ pub struct GrepItem {
 /// Extract path in string message with regex
 pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
     let mut items: Vec<GrepItem> = Vec::new();
-    let mut finder = Finder::new();
+    let mut finder = params.finder.clone();
     finder.current_dir(&params.current_dir);
     finder.ignore(params.ignore_pattern.clone());
     let find_list = finder.find();
@@ -36,7 +36,7 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
         );
     }
 
-    // Iterate over all matches in the message
+    // Iterate over all matches in the content
     for cap in find_list.as_regex().captures_iter(&params.content) {
         let matched = cap[0].to_string();
         let parts: Vec<&str> = matched.split(':').collect();
@@ -71,7 +71,7 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
         });
     }
 
-    // debup by item.path
+    // dedup by item.path
     items.sort_by(|a, b| {
         a.path
             .partial_cmp(&b.path)

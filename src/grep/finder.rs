@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use walkdir::{DirEntry, WalkDir};
 
@@ -59,12 +60,57 @@ impl IOFinder {
         let path_str = path.to_str().unwrap();
 
         for pattern in &self.ignore_pattern {
-            if path_str.contains(pattern) {
+            let segment = path_str.split("/").collect::<Vec<&str>>();
+            if segment.iter().any(|s| s == pattern) {
                 return true;
             }
         }
 
         false
+    }
+
+    fn find_iterative(&self, start_dir: &str, resources: &mut Vec<Resource>) {
+        let mut queue: VecDeque<String> = VecDeque::new();
+        queue.push_back(start_dir.to_string());
+
+        while let Some(dir) = queue.pop_front() {
+            let walker = WalkDir::new(&dir).into_iter();
+
+            for entry in walker.filter_entry(|e| !self.is_ignored(e)) {
+                match entry {
+                    Ok(entry) => {
+                        let path_str = entry.path().to_str().unwrap();
+                        let path = if path_str.starts_with("./") {
+                            path_str[2..].to_string()
+                        } else {
+                            path_str.to_string()
+                        };
+
+                        let filetype = if entry.file_type().is_dir() {
+                            Filetype::Directory
+                        } else {
+                            Filetype::File
+                        };
+
+                        if resources.iter().any(|r| r.path == path) {
+                            continue;
+                        }
+
+                        resources.push(Resource {
+                            path: path.clone(),
+                            filetype,
+                        });
+
+                        if entry.file_type().is_dir() {
+                            queue.push_back(path);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Error accessing {}: {}", dir, e);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -79,29 +125,7 @@ impl Finder for IOFinder {
 
     fn find(&mut self) -> Stats {
         let mut resources: Vec<Resource> = Vec::new();
-        let walker = WalkDir::new(&self.current_dir).into_iter();
-
-        for entry in walker.filter_entry(|e| !self.is_ignored(e)) {
-            if let Ok(entry) = entry {
-                let path_str = entry.path().to_str().unwrap();
-                // omit "./" prefix
-                let path = if path_str.starts_with("./") {
-                    path_str[2..].to_string()
-                } else {
-                    path_str.to_string()
-                };
-
-                resources.push(Resource {
-                    path,
-                    filetype: if entry.file_type().is_dir() {
-                        Filetype::Directory
-                    } else {
-                        Filetype::File
-                    },
-                });
-            }
-        }
-
+        self.find_iterative(&self.current_dir, &mut resources);
         Stats { resources }
     }
 }

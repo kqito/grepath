@@ -79,30 +79,13 @@ impl GrepParamsBuilder {
 
     pub fn build(self) -> Result<GrepParams, Error> {
         let default_ignore_pattern: Vec<String> = vec![
-            ".git".to_string(),
-            ".svn".to_string(),
-            ".hg".to_string(),
-            ".bzr".to_string(),
             "node_modules".to_string(),
             "dist".to_string(),
             "build".to_string(),
             "out".to_string(),
-            ".yardoc".to_string(),
-            ".bundle".to_string(),
-            "docs".to_string(),
-            "documentation".to_string(),
-            ".DS_Store".to_string(),
             "Thumbs.db".to_string(),
-            "*.pyc".to_string(),
-            "*.pyo".to_string(),
-            "*.exe".to_string(),
-            "*.dll".to_string(),
-            "*.so".to_string(),
-            "*.dylib".to_string(),
             "coverage".to_string(),
-            "*.log".to_string(),
-            ".coverage".to_string(),
-            "*.lcov".to_string(),
+            ".lcov".to_string(),
         ];
 
         let filetype = match self.filetype.len() {

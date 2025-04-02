@@ -36,7 +36,17 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
 
     if params.debug {
         pretty_print(&format!("Content: {:#?}", &params.content), Status::Info);
-        pretty_print(&format!("Finder: {:#?}", &find_list), Status::Info);
+        pretty_print(
+            &format!(
+                "Finder: {:#?}",
+                &find_list
+                    .resources
+                    .iter()
+                    .map(|i| i.path.clone())
+                    .collect::<Vec<String>>()
+            ),
+            Status::Info,
+        );
     }
 
     let items: Vec<_> = find_list
@@ -44,35 +54,23 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
         .par_iter()
         .filter_map(|r| {
             // Improve performance by checking if it matches without using regular expressions
-            if !params.content.contains(&r.path) {
+            if !params.content.contains(&r.matcher) {
                 return None;
             }
 
             if params.debug {
-                pretty_print(&format!("Matched: {}", &r.path), Status::Info);
+                pretty_print(&format!("Matched: {}", &r.matcher), Status::Info);
             }
 
-            let numbers = match r.as_regex().find(&params.content) {
-                Some(numbers) => numbers,
-                None => return None,
-            };
-            let line = match numbers.as_str().parse::<usize>() {
-                Ok(line) => Some(line),
-                Err(_) => None,
-            };
-            let column = match numbers.as_str().parse::<usize>() {
-                Ok(column) => Some(column),
-                Err(_) => None,
-            };
-            let item_type = match &r.path.starts_with('/') {
+            let item_type = match &r.matcher.starts_with('/') {
                 true => GrepItemType::AbsolutePath,
                 false => GrepItemType::RelativePath,
             };
 
             Some(GrepItem {
                 path: r.path.clone(),
-                line,
-                column,
+                line: None,   // TODO: implement line number
+                column: None, // TODO: implement line number
                 item_type,
                 filetype: r.filetype.clone(),
             })

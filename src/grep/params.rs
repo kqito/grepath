@@ -78,15 +78,8 @@ impl GrepParamsBuilder {
     }
 
     pub fn build(self) -> Result<GrepParams, Error> {
-        let default_ignore_pattern: Vec<String> = vec![
-            "node_modules".to_string(),
-            "dist".to_string(),
-            "build".to_string(),
-            "out".to_string(),
-            "Thumbs.db".to_string(),
-            "coverage".to_string(),
-            ".lcov".to_string(),
-        ];
+        let default_ignore_pattern: Vec<String> =
+            vec!["*node_modules*".to_string(), "*.git/*".to_string()];
 
         let filetype = match self.filetype.len() {
             // When no filetype is provided, default to file
@@ -101,6 +94,15 @@ impl GrepParamsBuilder {
             }),
         };
 
+        let current_dir = self.current_dir.clone();
+        let debug = self.debug.unwrap_or(false);
+        let mut default_finder = IOFinder::new();
+        default_finder.current_dir(&current_dir.unwrap_or(".".to_string()));
+        default_finder.ignore(default_ignore_pattern.clone());
+        default_finder.debug(debug);
+
+        let finder = self.finder.unwrap_or_else(|| Box::new(default_finder));
+
         match self.content {
             Some(content) => Ok(GrepParams {
                 debug: self.debug.unwrap_or(false),
@@ -111,7 +113,7 @@ impl GrepParamsBuilder {
                 } else {
                     self.ignore_pattern
                 },
-                finder: self.finder.unwrap_or_else(|| Box::new(IOFinder::new())),
+                finder,
                 filetype,
             }),
             None => Err(anyhow!("Missing content to search for")),

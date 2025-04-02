@@ -1,19 +1,58 @@
+use crate::output::pretty_print;
+use crate::output::Status;
+use ignore::gitignore::Gitignore;
+use ignore::Match;
 use regex::Regex;
-use std::collections::VecDeque;
 use std::fmt::Debug;
+use std::{collections::VecDeque, path::PathBuf};
 use walkdir::{DirEntry, WalkDir};
+use wildmatch::WildMatch;
+use wildmatch::WildMatchPattern;
 
 use super::params::Filetype;
+
+use std::path::{Component, Path};
+
+fn extract_relative_path(path_str: &str) -> Option<String> {
+    let path = Path::new(path_str);
+    let mut components = path.components().peekable();
+    let mut result = Vec::new();
+
+    while let Some(component) = components.next() {
+        match component {
+            Component::ParentDir => {
+                result.pop();
+            }
+            Component::CurDir => {}
+            _ => {
+                result.push(component.as_os_str());
+            }
+        }
+    }
+
+    if result.is_empty() {
+        None
+    } else {
+        Some(
+            Path::new(&result.iter().collect::<PathBuf>())
+                .to_string_lossy()
+                .to_string(),
+        )
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct IOFinder {
     pub current_dir: String,
-    pub ignore_pattern: Vec<String>,
+    pub ignore_pattern: Vec<WildMatchPattern<'*', '?'>>,
+    pub debug: bool,
+    gitignore: Option<Gitignore>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Resource {
     pub path: String,
+    pub matcher: String,
     pub filetype: Filetype,
 }
 
@@ -25,6 +64,7 @@ pub struct Stats {
 pub trait Finder: FinderClone + Debug + Sync + Send {
     fn current_dir(&mut self, current_dir: &str);
     fn ignore(&mut self, ignore: Vec<String>);
+    fn debug(&mut self, debug: bool);
     fn find(&mut self) -> Stats;
 }
 
@@ -52,16 +92,42 @@ impl IOFinder {
         Self {
             current_dir: ".".to_string(),
             ignore_pattern: vec![],
+            debug: false,
+            gitignore: None,
         }
     }
 
     fn is_ignored(&self, entry: &DirEntry) -> bool {
         let path = entry.path();
-        let path_str = path.to_str().unwrap();
+
+        if let Some(gitignore) = &self.gitignore {
+            match gitignore.matched(path, path.is_dir()) {
+                Match::Ignore(_) => {
+                    if self.debug {
+                        pretty_print(
+                            &format!("Skip: {:#?} by .gitignore", path.to_str()),
+                            Status::Info,
+                        );
+                    }
+                    return true;
+                }
+                _ => {}
+            }
+        }
+
+        let path_str = match path.to_str() {
+            Some(path) => path,
+            None => return false,
+        };
 
         for pattern in &self.ignore_pattern {
-            let segment = path_str.split("/").collect::<Vec<&str>>();
-            if segment.iter().any(|s| s == pattern) {
+            if pattern.matches(path_str) {
+                if self.debug {
+                    pretty_print(
+                        &format!("Skip: {:#?} by {:#?}", path, pattern.to_string()),
+                        Status::Info,
+                    );
+                }
                 return true;
             }
         }
@@ -79,12 +145,7 @@ impl IOFinder {
             for entry in walker.filter_entry(|e| !self.is_ignored(e)) {
                 match entry {
                     Ok(entry) => {
-                        let path_str = entry.path().to_str().unwrap();
-                        let path = if path_str.starts_with("./") {
-                            path_str[2..].to_string()
-                        } else {
-                            path_str.to_string()
-                        };
+                        let path = entry.path().to_str().unwrap();
 
                         let filetype = if entry.file_type().is_dir() {
                             Filetype::Directory
@@ -97,12 +158,13 @@ impl IOFinder {
                         }
 
                         resources.push(Resource {
-                            path: path.clone(),
+                            path: path.to_string(),
+                            matcher: extract_relative_path(path).unwrap_or(path.to_string()),
                             filetype,
                         });
 
                         if entry.file_type().is_dir() {
-                            queue.push_back(path);
+                            queue.push_back(path.to_string());
                         }
                     }
                     Err(e) => {
@@ -120,13 +182,27 @@ impl Finder for IOFinder {
     }
 
     fn ignore(&mut self, ignore: Vec<String>) {
-        self.ignore_pattern = ignore;
+        self.ignore_pattern = ignore
+            .into_iter()
+            .map(|i| WildMatch::new(&i))
+            .collect::<Vec<_>>();
     }
 
     fn find(&mut self) -> Stats {
         let mut resources: Vec<Resource> = Vec::new();
+        let gitignore_path = format!("{}/.gitignore", &self.current_dir);
+        let (gitignore, err) = Gitignore::new(gitignore_path);
+
+        if err.is_none() {
+            self.gitignore = Some(gitignore);
+        }
         self.find_iterative(&self.current_dir, &mut resources);
+
         Stats { resources }
+    }
+
+    fn debug(&mut self, debug: bool) {
+        self.debug = debug;
     }
 }
 
@@ -137,7 +213,6 @@ impl Resource {
                 let path = self.path.replace("/", r"\/");
                 Regex::new(&format!(r"{}", path)).unwrap()
             }
-            // Support for line and column numbers
             Filetype::File => {
                 let path = self.path.replace("/", r"\/");
                 Regex::new(&format!(r"{}(:\d+:\d+)?", path)).unwrap()

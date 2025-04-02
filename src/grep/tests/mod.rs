@@ -43,6 +43,8 @@ mod tests {
                 resources: self.resources.clone(),
             }
         }
+
+        fn debug(&mut self, _debug: bool) {}
     }
 
     #[test]
@@ -50,18 +52,22 @@ mod tests {
         let resources = vec![
             Resource {
                 path: "test_data".to_string(),
+                matcher: "test_data".to_string(),
                 filetype: Filetype::Directory,
             },
             Resource {
                 path: "test_data/test_file_1.txt".to_string(),
+                matcher: "test_data/test_file_1.txt".to_string(),
                 filetype: Filetype::File,
             },
             Resource {
                 path: "test_data/test_file_2.txt".to_string(),
+                matcher: "test_data/test_file_2.txt".to_string(),
                 filetype: Filetype::File,
             },
             Resource {
                 path: "test_data/test_file_3.txt".to_string(),
+                matcher: "test_data/test_file_3.txt".to_string(),
                 filetype: Filetype::File,
             },
         ];
@@ -89,18 +95,22 @@ mod tests {
         let resources = vec![
             Resource {
                 path: "test_data".to_string(),
+                matcher: "test_data".to_string(),
                 filetype: Filetype::Directory,
             },
             Resource {
                 path: "./test_data/test_file_1.txt".to_string(),
+                matcher: "./test_data/test_file_1.txt".to_string(),
                 filetype: Filetype::File,
             },
             Resource {
                 path: "./test_data/test_file_2.txt".to_string(),
+                matcher: "./test_data/test_file_2.txt".to_string(),
                 filetype: Filetype::File,
             },
             Resource {
                 path: "./test_data/test_file_3.txt".to_string(),
+                matcher: "./test_data/test_file_3.txt".to_string(),
                 filetype: Filetype::File,
             },
         ];
@@ -127,18 +137,22 @@ mod tests {
         let resources = vec![
             Resource {
                 path: "test_data".to_string(),
+                matcher: "test_data".to_string(),
                 filetype: Filetype::Directory,
             },
             Resource {
                 path: "./test_data/test_file_1.txt".to_string(),
+                matcher: "./test_data/test_file_1.txt".to_string(),
                 filetype: Filetype::File,
             },
             Resource {
                 path: "./test_data/test_file_2.txt".to_string(),
+                matcher: "./test_data/test_file_2.txt".to_string(),
                 filetype: Filetype::File,
             },
             Resource {
                 path: "./test_data/test_file_3.txt".to_string(),
+                matcher: "./test_data/test_file_3.txt".to_string(),
                 filetype: Filetype::File,
             },
         ];

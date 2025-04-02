@@ -43,12 +43,29 @@ fn extract_relative_path(path_str: &str) -> Option<String> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct IOFinder {
     pub current_dir: String,
     pub ignore_pattern: Vec<WildMatchPattern<'*', '?'>>,
     pub debug: bool,
     gitignore: Option<Gitignore>,
+}
+
+impl Debug for IOFinder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IOFinder")
+            .field("current_dir", &self.current_dir)
+            .field(
+                "ignore_pattern",
+                &self
+                    .ignore_pattern
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<_>>(),
+            )
+            .field("debug", &self.debug)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]

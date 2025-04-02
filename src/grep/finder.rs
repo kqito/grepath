@@ -2,30 +2,36 @@ use crate::output::pretty_print;
 use crate::output::Status;
 use ignore::gitignore::Gitignore;
 use ignore::Match;
+use rayon::prelude::*;
 use regex::Regex;
 use std::fmt::Debug;
-use std::{collections::VecDeque, path::PathBuf};
+use std::path::{Component, Path};
 use walkdir::{DirEntry, WalkDir};
 use wildmatch::WildMatch;
 use wildmatch::WildMatchPattern;
 
 use super::params::Filetype;
 
-use std::path::{Component, Path};
-
 fn extract_relative_path(path_str: &str) -> Option<String> {
     let path = Path::new(path_str);
     let mut components = path.components().peekable();
-    let mut result = Vec::new();
+    let mut result = String::new();
 
     while let Some(component) = components.next() {
         match component {
             Component::ParentDir => {
-                result.pop();
+                if let Some(last_slash) = result.rfind('/') {
+                    result.truncate(last_slash);
+                } else {
+                    result.clear();
+                }
             }
             Component::CurDir => {}
             _ => {
-                result.push(component.as_os_str());
+                if !result.is_empty() {
+                    result.push('/');
+                }
+                result.push_str(component.as_os_str().to_str().unwrap_or(""));
             }
         }
     }
@@ -33,11 +39,7 @@ fn extract_relative_path(path_str: &str) -> Option<String> {
     if result.is_empty() {
         None
     } else {
-        Some(
-            Path::new(&result.iter().collect::<PathBuf>())
-                .to_string_lossy()
-                .to_string(),
-        )
+        Some(result)
     }
 }
 
@@ -99,13 +101,17 @@ impl IOFinder {
 
     fn is_ignored(&self, entry: &DirEntry) -> bool {
         let path = entry.path();
+        let path_str = match path.to_str() {
+            Some(path) => path,
+            None => return false,
+        };
 
         if let Some(gitignore) = &self.gitignore {
             match gitignore.matched(path, path.is_dir()) {
                 Match::Ignore(_) => {
                     if self.debug {
                         pretty_print(
-                            &format!("Skip: {:#?} by .gitignore", path.to_str()),
+                            &format!("Skip: {:#?} by .gitignore", path_str),
                             Status::Info,
                         );
                     }
@@ -115,64 +121,42 @@ impl IOFinder {
             }
         }
 
-        let path_str = match path.to_str() {
-            Some(path) => path,
-            None => return false,
-        };
-
-        for pattern in &self.ignore_pattern {
+        self.ignore_pattern.iter().any(|pattern| {
             if pattern.matches(path_str) {
                 if self.debug {
                     pretty_print(
-                        &format!("Skip: {:#?} by {:#?}", path, pattern.to_string()),
+                        &format!("Skip: {:#?} by {:#?}", path_str, pattern.to_string()),
                         Status::Info,
                     );
                 }
-                return true;
+                true
+            } else {
+                false
             }
-        }
-
-        false
+        })
     }
 
-    fn find_iterative(&self, start_dir: &str, resources: &mut Vec<Resource>) {
-        let mut queue: VecDeque<String> = VecDeque::new();
-        queue.push_back(start_dir.to_string());
-
-        while let Some(dir) = queue.pop_front() {
-            let walker = WalkDir::new(&dir).into_iter();
-
-            for entry in walker.filter_entry(|e| !self.is_ignored(e)) {
-                match entry {
-                    Ok(entry) => {
-                        let path = entry.path().to_str().unwrap();
-
-                        let filetype = if entry.file_type().is_dir() {
-                            Filetype::Directory
-                        } else {
-                            Filetype::File
-                        };
-
-                        if resources.iter().any(|r| r.path == path) {
-                            continue;
-                        }
-
-                        resources.push(Resource {
-                            path: path.to_string(),
-                            matcher: extract_relative_path(path).unwrap_or(path.to_string()),
-                            filetype,
-                        });
-
-                        if entry.file_type().is_dir() {
-                            queue.push_back(path.to_string());
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Error accessing {}: {}", dir, e);
-                    }
+    fn find_parallel(&self, start_dir: &str) -> Vec<Resource> {
+        WalkDir::new(start_dir)
+            .into_iter()
+            .filter_entry(|e| !self.is_ignored(e))
+            .filter_map(|entry| entry.ok())
+            .par_bridge()
+            .map(|entry| {
+                let path = entry.path().to_str().unwrap().to_string();
+                let filetype = if entry.file_type().is_dir() {
+                    Filetype::Directory
+                } else {
+                    Filetype::File
+                };
+                let matcher = extract_relative_path(&path).unwrap_or(path.clone());
+                Resource {
+                    path,
+                    matcher,
+                    filetype,
                 }
-            }
-        }
+            })
+            .collect()
     }
 }
 
@@ -189,14 +173,14 @@ impl Finder for IOFinder {
     }
 
     fn find(&mut self) -> Stats {
-        let mut resources: Vec<Resource> = Vec::new();
         let gitignore_path = format!("{}/.gitignore", &self.current_dir);
         let (gitignore, err) = Gitignore::new(gitignore_path);
 
         if err.is_none() {
             self.gitignore = Some(gitignore);
         }
-        self.find_iterative(&self.current_dir, &mut resources);
+
+        let resources = self.find_parallel(&self.current_dir);
 
         Stats { resources }
     }
@@ -210,11 +194,11 @@ impl Resource {
     pub fn as_regex(&self) -> Regex {
         match self.filetype {
             Filetype::Directory => {
-                let path = self.path.replace("/", r"\/");
+                let path = self.path.replace('/', r"\/");
                 Regex::new(&format!(r"{}", path)).unwrap()
             }
             Filetype::File => {
-                let path = self.path.replace("/", r"\/");
+                let path = self.path.replace('/', r"\/");
                 Regex::new(&format!(r"{}(:\d+:\d+)?", path)).unwrap()
             }
         }

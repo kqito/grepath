@@ -36,24 +36,15 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
 
     if params.debug {
         pretty_print(&format!("Content: {:#?}", &params.content), Status::Info);
-        pretty_print(
-            &format!(
-                "Finder: {:#?}",
-                &find_list
-                    .resources
-                    .iter()
-                    .map(|i| i.path.clone())
-                    .collect::<Vec<String>>()
-            ),
-            Status::Info,
-        );
+        for resource in &find_list.resources {
+            pretty_print(&format!("Find file: {:#?}", resource.matcher), Status::Info);
+        }
     }
 
     let items: Vec<_> = find_list
         .resources
         .par_iter()
         .filter_map(|r| {
-            // Improve performance by checking if it matches without using regular expressions
             if !params.content.contains(&r.matcher) {
                 return None;
             }
@@ -78,6 +69,7 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
         .collect();
 
     let mut unique_items: Vec<GrepItem> = items.into_iter().collect();
+
     // dedup by item.path
     unique_items.sort_by(|a, b| {
         a.path
@@ -86,7 +78,6 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
     });
     unique_items.dedup_by(|a, b| a.path == b.path);
 
-    // filetypeでのフィルタリング
     unique_items.retain(|item| match item.filetype {
         Filetype::File => params.filetype.contains(&Filetype::File),
         Filetype::Directory => params.filetype.contains(&Filetype::Directory),

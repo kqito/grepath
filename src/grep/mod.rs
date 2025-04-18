@@ -36,9 +36,6 @@ pub fn grep(params: &GrepParams) -> Vec<GrepItem> {
 
     if params.debug {
         pretty_print(&format!("Content: {:#?}", &params.content), Status::Info);
-        for resource in &find_list.resources {
-            pretty_print(&format!("Find file: {:#?}", resource.matcher), Status::Info);
-        }
     }
 
     let items: Vec<_> = find_list
